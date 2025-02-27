@@ -155,6 +155,7 @@ jobs:
 #            ${{ env.LIST_File }}
           files: |
             ${{ env.ZIP_RELEASE_ARCHIVE }}
+            ${{ env.WRK_FOLDER }}/${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip
 
       - name: Create zip_all
         if: matrix.build_config  == 'Release'
