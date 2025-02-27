@@ -24,6 +24,8 @@ env:
   TAG_NAME:  "wled-server"
   PROG_VER:  "1.2"
   PROG_BUILD: "1"
+  BIN_FOLDER: "source/WledSRServer/bin/x64/Release/net8.0-windows7.0/win-x64/"
+  WRK_FOLDER: "D:/a/SR-WLED-audio-server-win/SR-WLED-audio-server-win"
 
 jobs:
 #------------------------------------------------------------------------------
@@ -109,17 +111,19 @@ jobs:
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
           # certificatename: '${{ secrets.CERTNAME }}'
-          folder: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}'
+          # folder: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}'
+          folder: '${{ env.BIN_FOLDER }}'
           recursive: true
 
       - name: Create Zip Archive Release
         if: matrix.build_config  == 'Release'
         continue-on-error: true
         uses: deep-soft/zip-release@v2
+        # source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}'
         with:
           type: 'zip'
-          filename: '${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip'
-          directory: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}'
+          filename: '${{ env.WRK_FOLDER }}/${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip'
+          directory: '${{ env.BIN_FOLDER }}'
           exclusions: '*.map *.pdb'
           recursive_exclusions: '*.map *.pdb changelog'
           path: '.'
