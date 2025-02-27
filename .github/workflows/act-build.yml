@@ -61,7 +61,7 @@ jobs:
         run: |
           PROG_VER=${{ env.PROG_VER}};
           # PROG_BUILD=$(cat ".source\WledSRServer\WledSRServer.csproj" | awk '    <Version>1.2.1</Version>')
-          VERSION=$PROG_VER.$PROG_BUILD";
+          VERSION="$PROG_VER.$PROG_BUILD";
           echo "VERSION=$VERSION";
           echo "VERSION=$VERSION" >> $GITHUB_ENV;
 
