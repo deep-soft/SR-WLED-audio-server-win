@@ -94,10 +94,10 @@ jobs:
 
 #       - name: Create zip
 #         continue-on-error: true
-#         working-directory: _build/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}
+#         working-directory: _build/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}
 #         run: |
 #           dir ./
-#           Compress-Archive . ../${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip
+#           Compress-Archive . ../${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip
 #           dir ../
 
       - name: Sign Windows exe and dll files
@@ -108,7 +108,7 @@ jobs:
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
           # certificatename: '${{ secrets.CERTNAME }}'
-          folder: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}'
+          folder: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}'
           recursive: true
 
       - name: Create Zip Archive Release
@@ -117,8 +117,8 @@ jobs:
         uses: deep-soft/zip-release@v2
         with:
           type: 'zip'
-          filename: '${{ env.PROG_NAME }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip'
-          directory: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}'
+          filename: '${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip'
+          directory: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}'
           exclusions: '*.map *.pdb'
           recursive_exclusions: '*.map *.pdb changelog'
           path: '.'
@@ -129,7 +129,7 @@ jobs:
         uses: deep-soft/upload-artifact@v4
         with:
           name: ${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip
-          #path: source/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}/${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip
+          #path: source/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}/${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip
           path: ${{ env.ZIP_RELEASE_ARCHIVE }}
 
       - name: Upload folder
@@ -138,7 +138,7 @@ jobs:
         uses: deep-soft/upload-artifact@v4
         with:
           name: ${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_name }}
-          path: source/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}
+          path: source/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}
 
       - name: Publish
         if: matrix.build_config  == 'Release'
@@ -156,7 +156,7 @@ jobs:
         uses: deep-soft/zip-release@v2
         with:
           type: 'zip'
-          filename: '${{ env.PROG_NAME }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip'
+          filename: '${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip'
           directory: './'
           exclusions: ''
           recursive_exclusions: ''
@@ -193,18 +193,18 @@ jobs:
 #             ${{ env.PROG_NAME }}-latest.txt
 # 
 #       - name: extra - Create Zip Archive Release
-#         if: always() && inputs.extra_plugins_profile && matrix.platform_sln == 'x64'
+#         if: always() && inputs.extra_plugins_profile && matrix.platform_name == 'x64'
 #         uses: deep-soft/zip-release@v2
 #         with:
 #           type: 'zip'
-#           filename: '${{ env.PROG_NAME }}.${{ matrix.platform_sln }}.${{ env.VERSION }}-extra.zip'
-#           directory: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}'
+#           filename: '${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}-extra.zip'
+#           directory: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_name }}'
 #           exclusions: '*.map *.pdb'
 #           recursive_exclusions: '*.map *.pdb changelog'
 #           path: '.'
 # 
 #       - name: extra - Publish latest Release
-#         if: always() && inputs.extra_plugins_profile && matrix.platform_sln == 'x64'
+#         if: always() && inputs.extra_plugins_profile && matrix.platform_name == 'x64'
 #         continue-on-error: false
 #         uses: deep-soft/action-gh-release@v2.1
 #         with:
