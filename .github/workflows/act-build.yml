@@ -1,0 +1,215 @@
+# 2025-02-27 08:26
+# act-build.yml
+name: act - Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      msbuild_cl_x64_release_input:
+        default: true
+        type: boolean
+      msbuild_cl_x86_release_input:
+        default: true
+        type: boolean
+      msbuild_cl_ARM64_release_input:
+        default: true
+        type: boolean
+      zip_all:
+        default: false
+        type: boolean
+
+
+env:
+  PROG_NAME: "wled-server"
+  TAG_NAME:  "wled-server"
+  PROG_VER:  "1.2"
+  PROG_BUILD: "1"
+
+jobs:
+#------------------------------------------------------------------------------
+  build-msbuild:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [
+          msbuild_cl_x64_release,
+#          msbuild_cl_x86_release,
+#          msbuild_cl_ARM64_release,
+#         msbuild_cl_x64_debug,
+#         msbuild_cl_x86_debug,
+        ]
+        include:
+          - { build: msbuild_cl_x64_release,   compiler: msbuild_cl, arch: amd64,       platform_sln: "Any CPU",   platform_name: x64,   build_config: Release }
+#          - { build: msbuild_cl_x64_release,   compiler: msbuild_cl, arch: amd64,       platform_sln: x64,   platform_name: x64,   build_config: Release }
+#          - { build: msbuild_cl_x86_release,   compiler: msbuild_cl, arch: amd64_x86,   platform_sln: Win32, platform_name: x86,   build_config: Release }
+#          - { build: msbuild_cl_ARM64_release, compiler: msbuild_cl, arch: amd64_arm64, platform_sln: ARM64, platform_name: ARM64, build_config: Release }
+#          - { build: msbuild_cl_x64_debug,     compiler: msbuild_cl, arch: amd64,       platform_sln: x64,   platform_name: x64,   build_config: Debug   }
+#          - { build: msbuild_cl_x86_debug,     compiler: msbuild_cl, arch: amd64_x86,   platform_sln: Win32, platform_name: x86,   build_config: Debug   }
+#        exclude:
+#          - { build: msbuild_cl_x64_release   }: ${{ inputs.msbuild_cl_x64_release_input   != true }}
+#          - { build: msbuild_cl_x86_release   }: ${{ inputs.msbuild_cl_x86_release_input   != true }}
+#          - { build: msbuild_cl_ARM64_release }: ${{ inputs.msbuild_cl_ARM64_release_input != true }}
+
+    steps:
+      - name: Checkout source
+        uses: deep-soft/checkout@v4
+
+      - name: Get program version
+        continue-on-error: false
+        shell: bash
+        run: |
+          PROG_VER=${{ env.PROG_VER}};
+          # PROG_BUILD=$(cat ".source\WledSRServer\WledSRServer.csproj" | awk '    <Version>1.2.1</Version>')
+          VERSION=$PROG_VER.$PROG_BUILD";
+          echo "VERSION=$VERSION";
+          echo "VERSION=$VERSION" >> $GITHUB_ENV;
+
+      - name: Print program version
+        continue-on-error: false
+        shell: bash
+        run: |
+          echo "Print program version"
+          echo ${{ env.VERSION }}
+
+      - name: Set MSVC environment
+        uses: deep-soft/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Set environment for debug build
+        if: matrix.build_config  == 'Debug'
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "DEBUG=1"
+
+      - name: Build (cl)
+        working-directory: source
+        run: |
+          msbuild -m /property:Configuration=${{ matrix.build_config }} /property:Platform=${{ matrix.platform_sln }} WledSRServer.sln
+
+#       - name: Perform CodeQL Analysis
+#         if: matrix.build == 'msbuild_cl_x64_debug'
+#         uses: github/codeql-action/analyze@v2
+
+#       - name: Create zip
+#         continue-on-error: true
+#         working-directory: _build/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}
+#         run: |
+#           dir ./
+#           Compress-Archive . ../${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip
+#           dir ../
+
+      - name: Sign Windows exe and dll files
+        continue-on-error: true
+        uses: deep-soft/code-sign-action@v9
+        with:
+          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
+          password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
+          certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
+          # certificatename: '${{ secrets.CERTNAME }}'
+          folder: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}'
+          recursive: true
+
+      - name: Create Zip Archive Release
+        if: matrix.build_config  == 'Release'
+        continue-on-error: true
+        uses: deep-soft/zip-release@v2
+        with:
+          type: 'zip'
+          filename: '${{ env.PROG_NAME }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip'
+          directory: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}'
+          exclusions: '*.map *.pdb'
+          recursive_exclusions: '*.map *.pdb changelog'
+          path: '.'
+
+      - name: Upload zip
+        if: matrix.build_config  == 'Release'
+        continue-on-error: true
+        uses: deep-soft/upload-artifact@v4
+        with:
+          name: ${{ env.PROG_NAME }}.${{ matrix.platform_name }}.${{ env.VERSION }}.zip
+          #path: source/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}/${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip
+          path: ${{ env.ZIP_RELEASE_ARCHIVE }}
+
+      - name: Upload folder
+        if: matrix.build_config  == 'Debug'
+        continue-on-error: true
+        uses: deep-soft/upload-artifact@v4
+        with:
+          name: ${{ env.PROG_NAME }}.${{ matrix.build_config }}.${{ matrix.platform_name }}
+          path: source/vc/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}
+
+      - name: Publish
+        if: matrix.build_config  == 'Release'
+        continue-on-error: true
+        uses: deep-soft/action-gh-release@v2.1
+        with:
+          tag_name: ${{ env.TAG_NAME }}-${{ env.VERSION }}
+#          files: |
+#            ${{ env.LIST_File }}
+          files: |
+            ${{ env.ZIP_RELEASE_ARCHIVE }}
+
+      - name: Create zip_all
+        if: matrix.build_config  == 'Release'
+        uses: deep-soft/zip-release@v2
+        with:
+          type: 'zip'
+          filename: '${{ env.PROG_NAME }}.${{ matrix.platform_sln }}.${{ env.VERSION }}.zip'
+          directory: './'
+          exclusions: ''
+          recursive_exclusions: ''
+          path: '.'
+
+      - name: Publish zip_all
+        if: matrix.build_config  == 'Release'
+        continue-on-error: true
+        uses: deep-soft/action-gh-release@v2.1
+        with:
+          tag_name: ZIP_ALL
+          files: |
+            ${{ env.ZIP_RELEASE_ARCHIVE }}
+
+# 
+#       - name: Prepare latest Release
+#         if: matrix.build_config  == 'Release'
+#         continue-on-error: false
+#         shell: bash
+#         run: |
+#           mv ${{ env.ZIP_RELEASE_ARCHIVE }} ${{ env.PROG_NAME }}.${{ matrix.platform_name }}.zip
+#           echo "${{ env.VERSION }}" > ${{ env.PROG_NAME }}-latest.txt
+# 
+#       - name: Publish latest Release
+#         if: matrix.build_config  == 'Release'
+#         continue-on-error: false
+#         uses: deep-soft/action-gh-release@v2.1
+#         with:
+#           draft: false
+#           tag_name: ${{ env.PROG_NAME }}-latest
+#           body: "${{ env.PROG_NAME }} latest: v${{ env.VERSION }}"
+#           files: |
+#             ${{ env.PROG_NAME }}.${{ matrix.platform_name }}.zip
+#             ${{ env.PROG_NAME }}-latest.txt
+# 
+#       - name: extra - Create Zip Archive Release
+#         if: always() && inputs.extra_plugins_profile && matrix.platform_sln == 'x64'
+#         uses: deep-soft/zip-release@v2
+#         with:
+#           type: 'zip'
+#           filename: '${{ env.PROG_NAME }}.${{ matrix.platform_sln }}.${{ env.VERSION }}-extra.zip'
+#           directory: 'source/_output/product/${{ matrix.build_config }}.${{ matrix.platform_sln }}'
+#           exclusions: '*.map *.pdb'
+#           recursive_exclusions: '*.map *.pdb changelog'
+#           path: '.'
+# 
+#       - name: extra - Publish latest Release
+#         if: always() && inputs.extra_plugins_profile && matrix.platform_sln == 'x64'
+#         continue-on-error: false
+#         uses: deep-soft/action-gh-release@v2.1
+#         with:
+#           draft: false
+#           tag_name: ${{ env.PROG_NAME }}-latest
+#           body: "${{ env.PROG_NAME }} latest: v${{ env.VERSION }}"
+#           files: |
+#             ${{ env.PROG_NAME }}.${{ matrix.platform_name }}-extra.zip
+#             ${{ env.PROG_NAME }}-extra-latest.txt
