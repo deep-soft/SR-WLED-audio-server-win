@@ -84,8 +84,9 @@ jobs:
 
       - name: Build (cl)
         working-directory: source
+        # msbuild -m /property:Configuration=${{ matrix.build_config }} /property:Platform=${{ matrix.platform_sln }} WledSRServer.sln
         run: |
-          msbuild -m /property:Configuration=${{ matrix.build_config }} /property:Platform=${{ matrix.platform_sln }} WledSRServer.sln
+          msbuild -m WledSRServer.sln
 
 #       - name: Perform CodeQL Analysis
 #         if: matrix.build == 'msbuild_cl_x64_debug'
