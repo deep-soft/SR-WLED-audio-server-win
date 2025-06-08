@@ -195,8 +195,13 @@ namespace WledSRServer.Audio
 
             var onSilence = () =>
             {
-                //Program.ServerContext.Packet.SetToZero();
+                // Program.ServerContext.Packet.SetToZero();
                 Program.ServerContext.Packet.DecayValues(0.85f);
+                Program.ServerContext.Packet.FFT_MajorPeak = 0;
+                Program.ServerContext.Packet.SamplePeak = 0;
+                Program.ServerContext.Packet.FrameCounter = 0; // without this, leds remains lit with like the last valid packet value
+                Program.ServerContext.Packet.ZeroCrossingCount = 0;
+
                 Program.ServerContext.AudioCaptureStatus = AudioCaptureStatus.Capturing_Silence;
                 Program.ServerContext.AudioCaptureErrorMessage = string.Empty;
                 PacketUpdated?.Invoke();
@@ -231,7 +236,10 @@ namespace WledSRServer.Audio
                 FFTfreqBands = bucketData.Values.Select(b => $"{b.FreqLow:F0}Hz - {b.FreqHigh:F0}Hz{(b.DataCount == 0 ? b.Interpolated ? " [<-/->]" : " [NO DATA]" : $" [{b.DataCount}]")}").ToArray();
             }));
             //chain.AddProcessor(new BucketAverager(10));
-            chain.AddProcessor(new BucketAGC());
+            chain.AddProcessor(new BucketGainControl(
+                manual: settings.ManualGain,
+                manualSpanReference: settings.ManualGainReference
+            ));
             chain.AddProcessor(new SetPacket(Program.ServerContext.Packet));
             chain.AddProcessor(new External(() =>
             {
